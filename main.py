@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
+#chessboard_size = (9, 6)
 chessboard_size = (6, 4)
 
 def draw_image_pair(frame_left, frame_right):
@@ -64,6 +65,7 @@ def calibrate(image_points_left, image_points_right, image_size, object_points):
 if __name__ == "__main__":
     from os import walk
 
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     f = {}
     run = "./runs/run2/"
     for file in os.listdir(run):
@@ -81,48 +83,72 @@ if __name__ == "__main__":
 
     corners_list_left, corners_list_right, objpts = [], [], []
     images_left, images_right = [], []
+    charuco_corners_list_left, charuco_corners_list_right = [], []
 
     for counter in range(int(len(f)/2)):
         img_left = cv2.imread(run + f["myleft{}.png".format(counter)], 0)
         img_right = cv2.imread(run + f["myright{}.png".format(counter)], 0)
+        images_left.append(img_left)
+        images_right.append(img_right)
 
-        ### find corners in left image
-        corners_left, ids_left, rejected = aruco.detectMarkers(
+        ###### left
+        # calc chessboard
+        found, corners = cv2.findChessboardCorners(img_left, chessboard_size, None)
+        cv2.cornerSubPix(img_left, corners, (11, 11), (-1, -1), criteria)
+        assert found
+        corners_list_left.append(corners.reshape(-1, 2))
+
+        # calc charuco
+        corners_charuco, ids_charuco, rejected = aruco.detectMarkers(
             img_left,
             aruco_dict,
             parameters=arucoParams
         )
-        resp_left, charuco_corners_left, charuco_ids_left = aruco.interpolateCornersCharuco(
-            markerCorners=corners_left,
-            markerIds=ids_left,
+        resp, charuco_corners_left, charuco_ids_left = aruco.interpolateCornersCharuco(
+            markerCorners=corners_charuco,
+            markerIds=ids_charuco,
             image=img_left,
             board=board
         )
-        corners_list_left.append(charuco_corners_left.reshape(-1, 2))
-        images_left.append(img_left)
+        charuco_corners_list_left.append(charuco_corners_left.reshape(-1, 2))
 
-        ### find corners in right image
-        corners_right, ids_right, rejected = aruco.detectMarkers(
+        ###### right
+        # calc chessboard
+        found, corners = cv2.findChessboardCorners(img_right, chessboard_size, None)
+        cv2.cornerSubPix(img_right, corners, (11, 11), (-1, -1), criteria)
+        assert found
+        corners_list_right.append(corners.reshape(-1, 2))
+
+        # calc charuco
+        corners_charuco, ids_charuco, rejected = aruco.detectMarkers(
             img_right,
             aruco_dict,
             parameters=arucoParams
         )
-        resp_right, charuco_corners_right, charuco_ids_right = aruco.interpolateCornersCharuco(
-            markerCorners=corners_right,
-            markerIds=ids_right,
+        resp, charuco_corners_right, charuco_ids_right = aruco.interpolateCornersCharuco(
+            markerCorners=corners_charuco,
+            markerIds=ids_charuco,
             image=img_right,
             board=board
         )
-        corners_list_right.append(charuco_corners_right.reshape(-1, 2))
-        images_right.append(img_right)
+        charuco_corners_list_right.append(charuco_corners_right.reshape(-1, 2))
 
-        ### save 3D object points
         objpts.append(object_points)
 
-        draw_image_pair(img_left, img_right)
+        aruco.drawDetectedCornersCharuco(img_left, charuco_corners_left, charuco_ids_left, (255, 0, 0))
+        cv2.imshow("out", img_left)
+
+        aruco.drawDetectedCornersCharuco(img_right, charuco_corners_right, charuco_ids_right, (255, 0, 0))
+        cv2.imshow("out", img_right)
 
     ######### find fundamental matrix F
     F = calibrate(corners_list_left, corners_list_right, img_left.shape, objpts)
 
-    draw_epilines(np.int32(corners_list_left[1]), np.int32(corners_list_right[1]), F, images_left[1],
-                  images_right[1])
+    F_charuco = calibrate(charuco_corners_list_left, charuco_corners_list_right, img_left.shape, objpts)
+
+    ######### Draw some examples
+    draw_epilines(np.int32(charuco_corners_list_left[0]), np.int32(charuco_corners_list_right[0]), F, images_left[0],
+                  images_right[0])
+
+    draw_epilines(np.int32(charuco_corners_list_left[0]), np.int32(charuco_corners_list_right[0]), F_charuco, images_left[0],
+                  images_right[0])
