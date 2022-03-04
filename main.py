@@ -81,10 +81,13 @@ if __name__ == "__main__":
     object_points = np.zeros((np.prod(chessboard_size), 3), dtype=np.float32)
     object_points[:, :2] = np.mgrid[0:chessboard_size[0], 0:chessboard_size[1]].T.reshape(-1, 2)
 
+    charuco_objpts = []
+
     corners_list_left, corners_list_right, objpts = [], [], []
     images_left, images_right = [], []
     charuco_corners_list_left, charuco_corners_list_right = [], []
 
+    charuco_chessboard_corners = board.chessboardCorners
     for counter in range(int(len(f)/2)):
         img_left = cv2.imread(run + f["myleft{}.png".format(counter)], 0)
         img_right = cv2.imread(run + f["myright{}.png".format(counter)], 0)
@@ -141,10 +144,11 @@ if __name__ == "__main__":
         aruco.drawDetectedCornersCharuco(img_right, charuco_corners_right, charuco_ids_right, (255, 0, 0))
         cv2.imshow("out", img_right)
 
+        charuco_objpts.append(charuco_chessboard_corners)
     ######### find fundamental matrix F
     F = calibrate(corners_list_left, corners_list_right, img_left.shape, objpts)
 
-    F_charuco = calibrate(charuco_corners_list_left, charuco_corners_list_right, img_left.shape, objpts)
+    F_charuco = calibrate(charuco_corners_list_left, charuco_corners_list_right, img_left.shape, charuco_objpts)
 
     ######### Draw some examples
     draw_epilines(np.int32(charuco_corners_list_left[0]), np.int32(charuco_corners_list_right[0]), F, images_left[0],
