@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     f = {}
-    run = "./runs/run2/"
+    run = "./runs/run1/"
     for file in os.listdir(run):
         f[file] = file
 
